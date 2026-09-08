@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14141C">
+<meta name="description" content="Free multilingual Indian text-to-speech converter with eSpeak NG, Indic Parler-TTS, and MMS voices.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sonavi">
+<title>Sonavi — Free Text to Speech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F5F0; --surface:#FFFFFF; --ink:#1A1A1D; --sub:#6B6A66;
+    --line:#E4E1D9; --accent:#D98A2B; --accent-ink:#241701;
+    --wave:#2FA6A6; --danger:#C64A3B; --radius:16px;
+    --focus:#2F6FE4;
+  }
+  [data-theme="dark"]{
+    --bg:#14141C; --surface:#1D1D28; --ink:#F0EFEA; --sub:#9B9AA6;
+    --line:#2E2E3C; --accent:#E8A33D; --accent-ink:#241701; --wave:#4FCFCF;
+  }
+  [data-theme="oled"]{
+    --bg:#000000; --surface:#0A0A0A; --ink:#F5F5F5; --sub:#8A8A8A;
+    --line:#1C1C1C; --accent:#E8A33D; --accent-ink:#000000; --wave:#4FCFCF;
+  }
+  [data-theme="hc"]{
+    --bg:#000000; --surface:#000000; --ink:#FFFFFF; --sub:#FFFFFF;
+    --line:#FFFFFF; --accent:#FFD500; --accent-ink:#000000; --wave:#00E5E5;
+    --focus:#FFD500;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    min-height:100dvh; display:flex; flex-direction:column; align-items:center;
+    transition:background .25s ease,color .25s ease;
+  }
+  .wrap{width:100%; max-width:560px; padding:20px 18px 12px; flex:1; display:flex; flex-direction:column; gap:18px;}
+  header{text-align:center; padding-top:6px;}
+  .brand{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.7rem;
+    display:flex; align-items:center; justify-content:center; gap:.5rem; letter-spacing:.01em;
+  }
+  .brand svg{flex-shrink:0;}
+  header p{color:var(--sub); margin:.35rem 0 0; font-size:.92rem;}
+  [data-theme="hc"] header p{color:var(--ink);}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; display:flex; flex-direction:column; gap:8px;
+  }
+  .textwrap{position:relative;}
+  .box-shared{
+    width:100%; font-size:1rem; line-height:1.5; font-family:inherit;
+    padding:12px; border-radius:12px; border:1px solid var(--line);
+  }
+  textarea{
+    min-height:130px; resize:vertical; background:transparent; color:var(--ink);
+  }
+  textarea.speaking{color:transparent; caret-color:transparent;}
+  .highlight-view{
+    position:absolute; inset:0; margin:0; pointer-events:none; overflow:auto;
+    white-space:pre-wrap; word-wrap:break-word; color:var(--ink); border-color:transparent;
+    background:transparent; display:none;
+  }
+  .highlight-view.show{display:block;}
+  .highlight-view mark{background:var(--accent); color:var(--accent-ink); border-radius:3px; padding:0 1px;}
+  textarea:focus, select:focus, button:focus-visible, input:focus-visible{
+    outline:3px solid var(--focus); outline-offset:2px;
+  }
+  .row{display:flex; gap:6px; flex-wrap:wrap;}
+  .field{display:flex; flex-direction:column; gap:3px;}
+  .row .field{flex:1 1 140px;}
+  label{font-size:.78rem; color:var(--sub); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  [data-theme="hc"] label{color:var(--ink);}
+  select, .segmented{
+    background:var(--bg); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; padding:10px; font-size:.95rem; font-family:inherit;
+  }
+  .segmented{display:flex; padding:2px; gap:1px;}
+  .segmented button{
+    flex:1; border:none; background:transparent; color:var(--sub);
+    padding:6px 3px; border-radius:7px; font-size:.76rem; font-weight:600;
+    cursor:pointer; transition:background .15s, color .15s;
+  }
+  .segmented button.active{background:var(--accent); color:var(--accent-ink);}
+  [data-theme="hc"] .segmented button{color:var(--ink);}
+  .segmented.disabled button{opacity:.4; pointer-events:none;}
+  .detected{font-size:.78rem; color:var(--sub); margin:0;}
+  [data-theme="hc"] .detected{color:var(--ink);}
+
+  .slider-row{display:flex; align-items:center; gap:8px;}
+  input[type=range]{flex:1; accent-color:var(--accent);}
+  .slider-val{font-variant-numeric:tabular-nums; font-size:.85rem; color:var(--sub); width:40px; text-align:right;}
+  [data-theme="hc"] .slider-val{color:var(--ink);}
+
+  .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+  .btn{
+    flex:0 1 auto; border:none; border-radius:12px; padding:10px 18px; font-size:.9rem;
+    font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
+    font-family:inherit; transition:transform .1s, opacity .15s; text-decoration:none;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:var(--accent); color:var(--accent-ink);}
+  .btn-secondary{background:transparent; color:var(--ink); border:1px solid var(--line);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  [data-theme="hc"] .btn-secondary{color:var(--ink); border-color:var(--ink);}
+
+  .status{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--sub); min-height:1.2em;}
+  [data-theme="hc"] .status{color:var(--ink);}
+  .status.err{color:var(--danger);}
+  [data-theme="hc"] .status.err{color:#FF6B57;}
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--wave); flex-shrink:0;}
+  .dot.pulse{animation:pulse 1s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)} 50%{opacity:1;transform:scale(1.15)}}
+  @media (prefers-reduced-motion: reduce){.dot.pulse{animation:none;opacity:1;}}
+
+  .note{font-size:.78rem; color:var(--sub); line-height:1.5; margin:0;}
+  [data-theme="hc"] .note{color:var(--ink);}
+  .counter{font-size:.76rem; color:var(--sub); text-align:right; margin:0;}
+  [data-theme="hc"] .counter{color:var(--ink);}
+
+  footer{
+    width:100%; max-width:560px; padding:16px 18px 22px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:10px; text-align:center; border-top:1px solid var(--line); margin-top:4px;
+  }
+  .theme-fab{
+    position:fixed; top:14px; right:14px; width:42px; height:42px; border-radius:50%;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    display:flex; align-items:center; justify-content:center; font-size:1.15rem;
+    cursor:pointer; z-index:50; box-shadow:0 2px 10px rgba(0,0,0,.18);
+  }
+  [data-theme="hc"] .theme-fab{border-color:var(--ink);}
+  .copyright{font-size:.78rem; color:var(--sub); line-height:1.6;}
+  [data-theme="hc"] .copyright{color:var(--ink);}
+</style>
+</head>
+<body data-theme="dark">
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 10v4h3l4 4V6L7 10H4z" fill="currentColor" style="color:var(--accent)"/>
+        <path d="M15 8c1.5 1.2 1.5 6.8 0 8M18 5c3 2.8 3 10.2 0 14" stroke="var(--wave)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      </svg>
+      Sonavi
+    </div>
+    <p>Multilingual Indian Text to Speech Converter</p>
+  </header>
+
+  <div class="card">
+    <div class="textwrap">
+      <textarea id="text" class="box-shared" maxlength="4000" placeholder="Type or paste text here… try Hindi, Bengali, Tamil, or English." aria-label="Text to speak"></textarea>
+      <div id="highlightView" class="highlight-view box-shared" aria-hidden="true"></div>
+    </div>
+    <div class="counter" id="counter">0 words · 0 / 4000 characters</div>
+
+    <div class="row">
+      <button class="btn btn-secondary" id="importBtn" type="button">📄 Import .txt / .pdf / .docx</button>
+      <input type="file" id="fileInput" accept=".txt,.pdf,.docx" hidden>
+    </div>
+
+    <div class="field">
+      <label for="engine">Voice engine</label>
+      <div class="segmented" id="engine" role="group" aria-label="Voice engine">
+        <button data-engine="espeak" class="active" type="button">eSpeak NG</button>
+        <button data-engine="parler" type="button">Indic Parler</button>
+        <button data-engine="mms" type="button">MMS</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="lang">Language</label>
+        <select id="lang"></select>
+        <p class="detected" id="detectedLabel"></p>
+      </div>
+      <div class="field" id="voiceField">
+        <label for="voice">Voice</label>
+        <select id="voice"></select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="gender">Voice gender</label>
+      <div class="segmented" id="gender" role="group" aria-label="Voice gender">
+        <button data-gender="any" class="active" type="button">Any</button>
+        <button data-gender="female" type="button">Female</button>
+        <button data-gender="male" type="button">Male</button>
+      </div>
+      <p class="note" id="genderNote"></p>
+    </div>
+
+    <div class="field">
+      <label for="rate">Speaking rate</label>
+      <div class="slider-row">
+        <input type="range" id="rate" min="0.5" max="1.8" step="0.1" value="1">
+        <span class="slider-val" id="rateVal">1.0×</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="pitch">Pitch</label>
+      <div class="slider-row">
+        <input type="range" id="pitch" min="0.5" max="1.8" step="0.1" value="1">
+        <span class="slider-val" id="pitchVal">1.0×</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="volume">Volume</label>
+      <div class="slider-row">
+        <input type="range" id="volume" min="0" max="1" step="0.05" value="1">
+        <span class="slider-val" id="volumeVal">100%</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="speakBtn" type="button">▶ Speak</button>
+      <button class="btn btn-secondary" id="stopBtn" type="button" disabled>■ Stop</button>
+      <a class="btn btn-secondary" id="downloadLink" href="#" download="sonavi-speech.wav" hidden>⬇ Download</a>
+    </div>
+    <div class="status" id="status"><span class="dot" id="statusDot"></span><span id="statusText">Ready.</span></div>
+    <p class="note">Shortcuts: Space = play/pause (outside the text box) · Esc = stop.</p>
+  </div>
+</div>
+
+<button id="themeFab" class="theme-fab" type="button" title="Toggle theme" aria-label="Toggle theme">☾</button>
+
+<footer>
+  <div class="copyright">© Manik Roy <span id="year"></span>. All Rights Reserved.</div>
+</footer>
+
+<audio id="player" hidden></audio>
+
+<script>
+(function(){
+  "use strict";
+
+  document.getElementById("year").textContent = new Date().getFullYear();
+  var textEl = document.getElementById("text");
+
+  /* ---------- Theme ---------- */
+  var THEME_ORDER = ["light", "dark", "oled", "hc"];
+  var THEME_ICON = {light:"☀", dark:"☾", oled:"●", hc:"◐"};
+  var THEME_LABEL = {light:"Light", dark:"Dark", oled:"OLED True Black", hc:"High Contrast"};
+  var themeFab = document.getElementById("themeFab");
+  applyTheme(localStorage.getItem("sonavi-theme") || "dark");
+  themeFab.addEventListener("click", function(){
+    var current = document.body.getAttribute("data-theme");
+    var next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
+    applyTheme(next);
+  });
+  function applyTheme(t){
+    document.body.setAttribute("data-theme", t);
+    localStorage.setItem("sonavi-theme", t);
+    themeFab.textContent = THEME_ICON[t];
+    themeFab.title = "Theme: " + THEME_LABEL[t] + " (tap to change)";
+    themeFab.setAttribute("aria-label", "Theme: " + THEME_LABEL[t] + ", tap to switch");
+  }
+
+  /* ---------- Settings persistence ---------- */
+  function loadSettings(){
+    try{ return JSON.parse(localStorage.getItem("sonavi-settings") || "{}"); }catch(e){ return {}; }
+  }
+  function saveSettings(patch){
+    var s = loadSettings();
+    Object.keys(patch).forEach(function(k){ s[k] = patch[k]; });
+    localStorage.setItem("sonavi-settings", JSON.stringify(s));
+  }
+  var settings = loadSettings();
+
+  /* ---------- Languages ---------- */
+  var LANGS = [
+    {code:"en", label:"English",  bcp:"en-US", mms:"eng", re:null},
+    {code:"hi", label:"Hindi",    bcp:"hi-IN", mms:"hin", re:/[\u0900-\u097F]/},
+    {code:"bn", label:"Bengali",  bcp:"bn-IN", mms:"ben", re:/[\u0980-\u09FF]/},
+    {code:"ta", label:"Tamil",    bcp:"ta-IN", mms:"tam", re:/[\u0B80-\u0BFF]/},
+    {code:"te", label:"Telugu",   bcp:"te-IN", mms:"tel", re:/[\u0C00-\u0C7F]/},
+    {code:"mr", label:"Marathi",  bcp:"mr-IN", mms:"mar", re:null},
+    {code:"gu", label:"Gujarati", bcp:"gu-IN", mms:"guj", re:/[\u0A80-\u0AFF]/},
+    {code:"kn", label:"Kannada",  bcp:"kn-IN", mms:"kan", re:/[\u0C80-\u0CFF]/},
+    {code:"ml", label:"Malayalam",bcp:"ml-IN", mms:"mal", re:/[\u0D00-\u0D7F]/},
+    {code:"pa", label:"Punjabi",  bcp:"pa-IN", mms:"pan", re:/[\u0A00-\u0A7F]/},
+    {code:"ur", label:"Urdu",     bcp:"ur-IN", mms:"urd", re:/[\u0600-\u06FF]/}
+  ];
+  var langSel = document.getElementById("lang");
+  var autoOpt = document.createElement("option");
+  autoOpt.value = "auto"; autoOpt.textContent = "Auto-detect";
+  langSel.appendChild(autoOpt);
+  LANGS.forEach(function(l){
+    var o = document.createElement("option");
+    o.value = l.code; o.textContent = l.label;
+    langSel.appendChild(o);
+  });
+  langSel.value = settings.lang || "auto";
+
+  function detectLanguage(text){
+    for(var i=0;i<LANGS.length;i++){
+      if(LANGS[i].re && LANGS[i].re.test(text)) return LANGS[i].code;
+    }
+    return "en";
+  }
+  function effectiveLangCode(){
+    return langSel.value === "auto" ? detectLanguage(textEl.value) : langSel.value;
+  }
+  function updateDetectedLabel(){
+    var el = document.getElementById("detectedLabel");
+    if(langSel.value !== "auto"){ el.textContent = ""; return; }
+    var l = LANGS.find(function(x){ return x.code === effectiveLangCode(); });
+    el.textContent = "Detected: " + (l ? l.label : "English");
+  }
+
+  /* ---------- Engine ---------- */
+  var engine = settings.engine || "espeak";
+  var engineBtns = document.querySelectorAll("#engine button");
+  var voiceField = document.getElementById("voiceField");
+  var voiceSel = document.getElementById("voice");
+  var downloadLink = document.getElementById("downloadLink");
+  var genderGroup = document.getElementById("gender");
+  function applyEngineUI(){
+    engineBtns.forEach(function(x){ x.classList.toggle("active", x.dataset.engine === engine); });
+    voiceField.style.display = engine === "espeak" ? "" : "none";
+    genderGroup.classList.toggle("disabled", engine === "mms");
+    document.getElementById("genderNote").textContent =
+      engine === "mms" ? "Not available for MMS — single fixed voice per language." : "";
+    downloadLink.hidden = true;
+  }
+  engineBtns.forEach(function(b){
+    b.addEventListener("click", function(){
+      engine = b.dataset.engine;
+      saveSettings({engine: engine});
+      applyEngineUI();
+      setStatus("Ready.", false);
+    });
+  });
+
+  /* ---------- Gender ---------- */
+  var genderBtns = document.querySelectorAll("#gender button");
+  var gender = settings.gender || "any";
+  genderBtns.forEach(function(b){
+    if(b.dataset.gender === gender) b.classList.add("active"); else b.classList.remove("active");
+    b.addEventListener("click", function(){
+      gender = b.dataset.gender;
+      saveSettings({gender: gender});
+      genderBtns.forEach(function(x){ x.classList.toggle("active", x === b); });
+      if(engine === "espeak") populateVoiceList();
+    });
+  });
+
+  /* ---------- eSpeak NG / system voices ---------- */
+  var allVoices = [];
+  var FEMALE_HINTS = ["zira","susan","hazel","samantha","victoria","karen","moira","tessa","fiona","kate",
+    "serena","allison","ava","joana","paulina","laura","monica","amelie","anna","elsa","ines","luciana",
+    "mariska","carmen","catherine","salli","joanna","kendra","kimberly","ivy","nicole","emma","amy",
+    "heera","lekha","kalpana","shruti","veena","aditi","raveena","geeta","meera","pooja"];
+  var MALE_HINTS = ["david","mark","george","fred","ralph","daniel","alex","aaron","arthur","bruce","diego",
+    "carlos","felipe","jorge","luca","stefan","yannick","matthew","justin","russell","brian","joey",
+    "hemant","ravi","rishi","prabhat","rajesh","arjun","vikram","suresh"];
+  function classifyGender(v){
+    var n = (v.name || "").toLowerCase();
+    if(/\bfemale\b|\bwoman\b|\bgirl\b/.test(n)) return "female";
+    if(/\bmale\b|\bman\b|\bboy\b/.test(n)) return "male";
+    if(FEMALE_HINTS.some(function(k){ return n.indexOf(k) > -1; })) return "female";
+    if(MALE_HINTS.some(function(k){ return n.indexOf(k) > -1; })) return "male";
+    return "unknown";
+  }
+  function loadVoices(){
+    allVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    populateVoiceList();
+  }
+  function populateVoiceList(){
+    var langCode = effectiveLangCode();
+    var matches = allVoices.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf(langCode) === 0; });
+    var list = matches;
+    var noteEl = document.getElementById("genderNote");
+    if(engine !== "mms") noteEl.textContent = "";
+    if(gender !== "any" && matches.length && engine !== "mms"){
+      var byGender = matches.filter(function(v){ return classifyGender(v) === gender; });
+      if(byGender.length){ list = byGender; }
+      else { noteEl.textContent = "No voices tagged " + gender + " for this language on your device — showing all available voices instead."; }
+    }
+    voiceSel.innerHTML = "";
+    if(list.length === 0){
+      var o = document.createElement("option");
+      o.textContent = "System default"; o.value = "";
+      voiceSel.appendChild(o);
+      return;
+    }
+    list.forEach(function(v){
+      var o = document.createElement("option");
+      o.value = v.name; o.textContent = v.name + (v.localService ? " (offline)" : "");
+      if(v.name === settings.voiceName) o.selected = true;
+      voiceSel.appendChild(o);
+    });
+  }
+  if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+  langSel.addEventListener("change", function(){
+    saveSettings({lang: langSel.value});
+    updateDetectedLabel();
+    populateVoiceList();
+  });
+  voiceSel.addEventListener("change", function(){ saveSettings({voiceName: voiceSel.value}); });
+
+  /* ---------- Sliders ---------- */
+  function wireSlider(id, valId, fmt, key){
+    var el = document.getElementById(id), val = document.getElementById(valId);
+    if(settings[key] !== undefined){ el.value = settings[key]; }
+    val.textContent = fmt(el.value);
+    el.addEventListener("input", function(){
+      val.textContent = fmt(el.value);
+      saveSettings((function(){ var p = {}; p[key] = el.value; return p; })());
+      if(engine !== "espeak") player.volume = parseFloat(document.getElementById("volume").value);
+    });
+  }
+  wireSlider("rate", "rateVal", function(v){ return parseFloat(v).toFixed(1) + "×"; }, "rate");
+  wireSlider("pitch", "pitchVal", function(v){ return parseFloat(v).toFixed(1) + "×"; }, "pitch");
+  wireSlider("volume", "volumeVal", function(v){ return Math.round(parseFloat(v)*100) + "%"; }, "volume");
+  var rateEl = document.getElementById("rate"), pitchEl = document.getElementById("pitch"), volumeEl = document.getElementById("volume");
+
+  /* ---------- Status ---------- */
+  var statusText = document.getElementById("statusText"), statusDot = document.getElementById("statusDot"), statusBox = document.getElementById("status");
+  function setStatus(msg, busy, isError){
+    statusText.textContent = msg;
+    statusDot.classList.toggle("pulse", !!busy);
+    statusBox.classList.toggle("err", !!isError);
+  }
+
+  /* ---------- File import ---------- */
+  var importBtn = document.getElementById("importBtn"), fileInput = document.getElementById("fileInput");
+  importBtn.addEventListener("click", function(){ fileInput.click(); });
+  var loadedScripts = {};
+  function loadScript(src){
+    if(loadedScripts[src]) return loadedScripts[src];
+    loadedScripts[src] = new Promise(function(resolve, reject){
+      var s = document.createElement("script");
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    return loadedScripts[src];
+  }
+  fileInput.addEventListener("change", function(){
+    var file = fileInput.files[0];
+    if(!file) return;
+    var ext = file.name.split(".").pop().toLowerCase();
+    setStatus("Reading " + file.name + "…", true);
+    if(ext === "txt"){
+      var r = new FileReader();
+      r.onload = function(){ textEl.value = r.result; onTextChanged(); setStatus("Imported " + file.name + ".", false); };
+      r.onerror = function(){ setStatus("Couldn't read that file.", false, true); };
+      r.readAsText(file);
+    } else if(ext === "pdf"){
+      loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js").then(function(){
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        return file.arrayBuffer();
+      }).then(function(buf){ return window.pdfjsLib.getDocument({data: buf}).promise; })
+        .then(function(doc){
+          var pages = []; var p = Promise.resolve();
+          for(var i=1;i<=doc.numPages;i++){
+            (function(n){ p = p.then(function(){ return doc.getPage(n); })
+              .then(function(pg){ return pg.getTextContent(); })
+              .then(function(tc){ pages.push(tc.items.map(function(it){ return it.str; }).join(" ")); }); })(i);
+          }
+          return p.then(function(){ return pages.join("\n\n"); });
+        }).then(function(text){ textEl.value = text; onTextChanged(); setStatus("Imported " + file.name + ".", false); })
+        .catch(function(){ setStatus("Couldn't read that PDF.", false, true); });
+    } else if(ext === "docx"){
+      loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js").then(function(){
+        return file.arrayBuffer();
+      }).then(function(buf){ return window.mammoth.extractRawText({arrayBuffer: buf}); })
+        .then(function(res){ textEl.value = res.value; onTextChanged(); setStatus("Imported " + file.name + ".", false); })
+        .catch(function(){ setStatus("Couldn't read that Word file.", false, true); });
+    } else {
+      setStatus("Unsupported file type.", false, true);
+    }
+    fileInput.value = "";
+  });
+  var counterEl = document.getElementById("counter");
+  function updateCounter(){
+    var text = textEl.value;
+    var chars = text.length;
+    var trimmed = text.trim();
+    var words = trimmed === "" ? 0 : trimmed.split(/\s+/).length;
+    counterEl.textContent = words + " word" + (words === 1 ? "" : "s") + " · " + chars + " / " + textEl.maxLength + " characters";
+  }
+  function onTextChanged(){
+    updateCounter();
+    if(langSel.value === "auto") { updateDetectedLabel(); populateVoiceList(); }
+  }
+  textEl.addEventListener("input", onTextChanged);
+  updateCounter();
+
+  /* ---------- Play / Pause / Stop state machine ---------- */
+  var speakBtn = document.getElementById("speakBtn"), stopBtn = document.getElementById("stopBtn");
+  var player = document.getElementById("player");
+  var highlightView = document.getElementById("highlightView");
+  var playState = "idle"; // idle | playing | paused
+  var activeMode = null;  // 'browser' | 'cloud'
+
+  speakBtn.addEventListener("click", function(){
+    if(playState === "idle") startSpeaking();
+    else if(playState === "playing") pauseSpeaking();
+    else resumeSpeaking();
+  });
+  stopBtn.addEventListener("click", stopSpeaking);
+
+  function setPlayState(s){
+    playState = s;
+    stopBtn.disabled = (s === "idle");
+    speakBtn.textContent = s === "playing" ? "⏸ Pause" : s === "paused" ? "▶ Resume" : "▶ Speak";
+  }
+
+  function startSpeaking(){
+    var text = textEl.value.trim();
+    if(!text){ setStatus("Type or import something first.", false, true); return; }
+    downloadLink.hidden = true;
+    if(engine === "espeak"){ activeMode = "browser"; speakBrowser(text); }
+    else { activeMode = "cloud"; speakCloud(text, engine); }
+  }
+  function pauseSpeaking(){
+    if(activeMode === "browser" && window.speechSynthesis) window.speechSynthesis.pause();
+    else if(activeMode === "cloud") player.pause();
+    setPlayState("paused");
+    setStatus("Paused.", false);
+  }
+  function resumeSpeaking(){
+    if(activeMode === "browser" && window.speechSynthesis) window.speechSynthesis.resume();
+    else if(activeMode === "cloud") player.play();
+    setPlayState("playing");
+    setStatus("Speaking…", true);
+  }
+  function stopSpeaking(){
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    player.pause(); player.currentTime = 0;
+    textEl.readOnly = false;
+    textEl.classList.remove("speaking");
+    highlightView.classList.remove("show");
+    setPlayState("idle");
+    setStatus("Stopped.", false);
+  }
+
+  /* ---------- Engine 1: eSpeak NG / browser speechSynthesis, with word highlighting ---------- */
+  function escapeHtml(s){ return s.replace(/[&<>]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+  function speakBrowser(text){
+    if(!window.speechSynthesis){ setStatus("Speech synthesis isn't supported on this browser.", false, true); setPlayState("idle"); return; }
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    var lang = LANGS.find(function(l){ return l.code === effectiveLangCode(); });
+    u.lang = lang ? lang.bcp : "en-US";
+    u.rate = parseFloat(rateEl.value);
+    u.pitch = parseFloat(pitchEl.value);
+    u.volume = parseFloat(volumeEl.value);
+    var chosen = allVoices.find(function(v){ return v.name === voiceSel.value; });
+    if(chosen) u.voice = chosen;
+
+    textEl.readOnly = true;
+    textEl.classList.add("speaking");
+    highlightView.textContent = text;
+    highlightView.classList.add("show");
+    highlightView.scrollTop = 0;
+
+    u.onboundary = function(ev){
+      if(ev.name && ev.name !== "word") return;
+      var start = ev.charIndex;
+      var rest = text.slice(start);
+      var m = rest.match(/^\S+/);
+      var end = m ? start + m[0].length : start + (ev.charLength || 1);
+      highlightView.innerHTML = escapeHtml(text.slice(0, start)) + "<mark>" + escapeHtml(text.slice(start, end)) + "</mark>" + escapeHtml(text.slice(end));
+    };
+    setStatus("Speaking…", true);
+    setPlayState("playing");
+    u.onend = function(){
+      textEl.readOnly = false; textEl.classList.remove("speaking"); highlightView.classList.remove("show");
+      setPlayState("idle"); setStatus("Done.", false);
+    };
+    u.onerror = function(){
+      textEl.readOnly = false; textEl.classList.remove("speaking"); highlightView.classList.remove("show");
+      setPlayState("idle"); setStatus("Playback failed. Try another voice.", false, true);
+    };
+    window.speechSynthesis.speak(u);
+  }
+
+  /* ---------- Engine 2 & 3: free HF inference endpoints, no API key ---------- */
+  function modelIdFor(engineName, langCode){
+    if(engineName === "parler") return "ai4bharat/indic-parler-tts";
+    var l = LANGS.find(function(x){ return x.code === langCode; });
+    return "facebook/mms-tts-" + (l ? l.mms : "eng");
+  }
+  function speakCloud(text, engineName){
+    var modelId = modelIdFor(engineName, effectiveLangCode());
+    setStatus("Waking up free model server…", true);
+    setPlayState("playing");
+    var url = "https://api-inference.huggingface.co/models/" + modelId;
+    var genderDesc = gender === "female" ? "a clear female voice" : gender === "male" ? "a clear male voice" : "a clear voice";
+    var body = engineName === "parler"
+      ? { inputs: text, parameters: { description: "A natural, moderately expressive recording of " + genderDesc + "." } }
+      : { inputs: text };
+
+    fetchWithRetry(url, body, 0).then(function(blob){
+      var objUrl = URL.createObjectURL(blob);
+      player.src = objUrl;
+      player.volume = parseFloat(volumeEl.value);
+      downloadLink.href = objUrl;
+      downloadLink.hidden = false;
+      setStatus("Speaking…", true);
+      player.play();
+    }).catch(function(err){
+      setPlayState("idle");
+      setStatus("Free server is busy or asleep right now. Try again, or switch to eSpeak NG.", false, true);
+      console.error(err);
+    });
+  }
+  function fetchWithRetry(url, body, attempt){
+    return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function(res){
+        if(res.status === 503 && attempt < 2){
+          return new Promise(function(resolve){ setTimeout(resolve, 4000); }).then(function(){ return fetchWithRetry(url, body, attempt + 1); });
+        }
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        var type = res.headers.get("content-type") || "";
+        if(type.indexOf("audio") === -1) throw new Error("No audio returned");
+        return res.blob();
+      });
+  }
+  player.addEventListener("ended", function(){ setPlayState("idle"); setStatus("Done.", false); });
+  player.addEventListener("error", function(){ setPlayState("idle"); setStatus("Playback failed.", false, true); });
+
+  /* ---------- Keyboard shortcuts ---------- */
+  document.addEventListener("keydown", function(e){
+    if(e.code === "Escape"){ stopSpeaking(); return; }
+    if(e.code === "Space" && document.activeElement !== textEl && document.activeElement.tagName !== "INPUT"){
+      e.preventDefault();
+      speakBtn.click();
+    }
+  });
+
+  /* ---------- Init ---------- */
+  applyEngineUI();
+  updateDetectedLabel();
+  setPlayState("idle");
+
+  /* ---------- PWA install ---------- */
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(err){ console.warn("SW registration failed:", err); });
+    });
+  }
+})();
+</script>
+</body>
+</html>
